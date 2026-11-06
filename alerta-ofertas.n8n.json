@@ -1,0 +1,460 @@
+{
+  "name": "Alerta de Ofertas (WhatsApp + Telegram)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "3f3adf5f-4bac-4652-b88c-e5e3919922d8",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c44718a6-09c6-40d5-bbfa-6820cd7071cc",
+      "name": "WhatsApp (Evolution)",
+      "webhookId": "3f3adf5f-4bac-4652-b88c-e5e3919922d8"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "id": "9718aeca-a6aa-4e42-93d1-7f11c5c88280",
+      "name": "Telegram a cada 5 min"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================================\n//  ⚙️  CONFIGURAÇÃO DO ALERTA DE OFERTAS — você só precisa editar ESTE nó\n// =====================================================================\nconst CONFIG = {\n  // --- Evolution API (v2) ---\n  evolutionUrl: 'https://SUA-EVOLUTION-API.com.br', // sem \"/\" no final\n  instancia: 'NOME_DA_SUA_INSTANCIA',\n\n  // --- Para onde vão os alertas ---\n  // Seu número com DDI + DDD, só dígitos. Também aceita o ID de um grupo (ex.: '1203...@g.us').\n  meuNumero: '5511999999999',\n\n  // --- Grupos de WhatsApp monitorados ---\n  // Formato: 'ID_DO_GRUPO@g.us': 'Nome que aparece no alerta'\n  // Não sabe o ID? Mande a mensagem  !id  dentro do grupo (pelo seu número)\n  // que o workflow te responde no privado com o ID.\n  grupos: {\n    // '120363000000000000@g.us': 'Ofertas de TVs',\n  },\n\n  // --- Canais PÚBLICOS do Telegram (opcional) ---\n  // Canais do WhatsApp NÃO chegam pela Evolution; muitos têm espelho no Telegram.\n  // Só funciona se abrir no navegador: https://t.me/s/<usuario>\n  canaisTelegram: [\n    // { usuario: 'achadosdotb', nome: 'Achados do Tecnoblog' },\n    // { usuario: 'ofertasadrenaline', nome: 'Ofertas Adrenaline' },\n  ],\n\n  // --- IA (opcional, recomendado) ---\n  // true  = o pré-filtro seleciona e a IA confirma (menos alarme falso, permite preço máximo)\n  // false = só o pré-filtro por palavras decide (grátis)\n  usarIA: true,\n  modeloIA: 'gpt-5-mini',\n\n  // Não repete o mesmo texto de oferta dentro desse intervalo\n  dedupHoras: 12,\n\n  // =====================================================================\n  //  ALERTAS — um bloco por tipo de produto. Copie um bloco para criar outro.\n  //\n  //  precisaTer : lista de listas. A mensagem precisa ter PELO MENOS UM termo\n  //               de CADA lista. Ex.: [['oled'], ['lg','samsung']] = \"oled\" E (\"lg\" OU \"samsung\")\n  //  naoPodeTer : se aparecer qualquer um desses termos, descarta\n  //  Termos ignoram maiúsculas e acentos e casam palavra inteira ('55' não casa com 'R$ 1.559').\n  //  Para regex, comece com 're:'  (ex.: 're:oled(55|65)' casa com 'OLED55C4')\n  //  criterio   : descrição em português que a IA usa para confirmar\n  //  precoMaximo: número em reais (ex.: 4500) ou null. Só funciona com usarIA = true\n  //  grupos     : [] = todas as fontes; ou nomes específicos (os mesmos de \"grupos\"/\"canaisTelegram\")\n  // =====================================================================\n  alertas: [\n    {\n      nome: 'TV OLED LG/Samsung 55\" ou 65\"',\n      ativo: true,\n      precisaTer: [\n        ['oled', 're:oled\\\\d{2}', 're:qn\\\\d{2}s9'],\n        ['lg', 'samsung', 're:oled\\\\d{2}[a-z]', 're:qn\\\\d{2}s9'],\n        ['55', '65', 're:oled(55|65)', 're:qn(55|65)'],\n      ],\n      naoPodeTer: ['suporte', 'capa', 'controle remoto', 'soundbar'],\n      criterio:\n        'Oferta de Smart TV com tecnologia OLED (inclui QD-OLED) da marca LG ou Samsung, com tela de ' +\n        'exatamente 55 ou 65 polegadas. NÃO vale: QLED, Neo QLED, NanoCell, QNED, Mini-LED, LED comum, ' +\n        'outras marcas, outros tamanhos, acessórios ou mensagens que não são oferta.',\n      precoMaximo: null,\n      grupos: [],\n    },\n    {\n      nome: 'iPhone 16 / 16 Pro até R$ 5.000',\n      ativo: false, // exemplo — mude para true para usar\n      precisaTer: [['iphone'], ['16']],\n      naoPodeTer: ['capinha', 'capa', 'pelicula', 'carregador', 'cabo'],\n      criterio:\n        'Oferta de um iPhone 16, 16 Plus, 16 Pro ou 16 Pro Max NOVO (não recondicionado, não seminovo). ' +\n        'NÃO vale: acessórios, outros modelos de iPhone.',\n      precoMaximo: 5000,\n      grupos: [],\n    },\n  ],\n};\nreturn [{ json: CONFIG }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        140
+      ],
+      "id": "46b01f44-f16f-4693-93eb-520a45f49537",
+      "name": "CONFIG"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "27928d4c-f181-40eb-abe4-df4b1fdcc8a8",
+              "leftValue": "={{ $('WhatsApp (Evolution)').isExecuted }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        140
+      ],
+      "id": "b0075940-cb4e-4034-ae79-67a668bfe383",
+      "name": "Veio do WhatsApp?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza a mensagem que chegou da Evolution e decide se ela interessa\nconst cfg = $('CONFIG').first().json;\nconst body = $('WhatsApp (Evolution)').first().json.body || {};\nconst d = body.data || {};\nconst jid = d.key?.remoteJid || '';\nconst m = d.message || {};\nconst texto =\n  m.conversation || m.extendedTextMessage?.text || m.imageMessage?.caption || m.videoMessage?.caption || '';\n\n// Comando \"!id\": responde no privado com o ID do grupo/chat onde foi enviado\nif (d.key?.fromMe && texto.trim().toLowerCase() === '!id') {\n  return [{ json: { mensagemPronta:\n    `🆔 ID deste chat:\\n${jid}\\n\\nCole no nó CONFIG, em \"grupos\":\\n'${jid}': 'Nome do grupo',` } }];\n}\nif (body.event && body.event !== 'messages.upsert') return [];\nif (d.key?.fromMe || !cfg.grupos[jid] || !texto.trim()) return [];\nreturn [{ json: { fonte: cfg.grupos[jid], texto } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "id": "ff6a4377-048a-41b4-a326-4bc253471286",
+      "name": "Mensagem do WhatsApp"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $('CONFIG').first().json;\nreturn (cfg.canaisTelegram || []).map((c) => ({ json: c }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ],
+      "id": "2df2fb54-e697-4fd2-a10d-3be33a37d615",
+      "name": "Lista canais do Telegram"
+    },
+    {
+      "parameters": {
+        "url": "=https://t.me/s/{{ $json.usuario }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        300
+      ],
+      "id": "cb7caec0-05a6-4592-92bf-4f283436ae81",
+      "name": "Lê canal do Telegram",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lê a prévia pública (t.me/s/<canal>) e emite só os posts novos desde a última execução\nconst store = $getWorkflowStaticData('global');\nstore.ultimoPost = store.ultimoPost || {};\nconst canais = $('Lista canais do Telegram').all();\nconst limpa = (s) => s\n  .replace(/<br\\s*\\/?>/g, '\\n').replace(/<[^>]+>/g, '')\n  .replace(/&#(\\d+);/g, (_, n) => String.fromCodePoint(+n))\n  .replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')\n  .trim();\nconst out = [];\n$input.all().forEach((it, i) => {\n  const c = canais[i].json;\n  const html = it.json.data;\n  if (typeof html !== 'string') return;\n  const posts = [];\n  for (const b of html.split('tgme_widget_message_wrap').slice(1)) {\n    const id = +((b.match(/data-post=\"[^\"\\/]+\\/(\\d+)\"/) || [])[1] || 0);\n    const m = b.match(/<div class=\"tgme_widget_message_text[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/);\n    if (id && m) posts.push({ id, texto: limpa(m[1]) });\n  }\n  if (!posts.length) return;\n  const ultimo = store.ultimoPost[c.usuario];\n  store.ultimoPost[c.usuario] = Math.max(ultimo || 0, ...posts.map((p) => p.id));\n  if (ultimo === undefined) return; // 1ª execução: só marca a posição, não manda o histórico\n  for (const p of posts) if (p.id > ultimo) out.push({ json: { fonte: c.nome || c.usuario, texto: p.texto } });\n});\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        300
+      ],
+      "id": "3f63535e-06bd-4bb9-8b3b-5fb5d16f1f7c",
+      "name": "Posts novos do Telegram"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aplica os ALERTAS do CONFIG: pré-filtro por palavras + dedup + prepara a pergunta pra IA\nconst cfg = $('CONFIG').first().json;\nconst store = $getWorkflowStaticData('global');\nstore.vistos = store.vistos || {};\nconst agora = Date.now();\nfor (const [k, ts] of Object.entries(store.vistos)) {\n  if (agora - ts > (cfg.dedupHoras || 12) * 3600e3) delete store.vistos[k];\n}\n\nconst norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();\nconst regex = (t) => t.startsWith('re:')\n  ? new RegExp(t.slice(3), 'i')\n  : new RegExp('(^|[^a-z0-9])' + norm(t).replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&') + '(?=$|[^a-z0-9])', 'i');\nconst tem = (txt, termo) => regex(termo).test(txt);\n\nconst PROMPT =\n  'Você classifica mensagens de grupos de ofertas. Responda SOMENTE um JSON no formato ' +\n  '{\"match\": boolean, \"produto\": string, \"preco\": string, \"preco_numero\": number|null, \"motivo\": string}. ' +\n  'match=true apenas se a mensagem for uma oferta que atende EXATAMENTE ao critério. ' +\n  'produto = nome curto (marca, modelo, variação). preco = menor preço anunciado como texto (ex.: \"R$ 4.299 no Pix\"). ' +\n  'preco_numero = esse preço em reais como número (ex.: 4299.9), ou null se não houver.';\n\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json;\n  if (j.mensagemPronta) { out.push({ json: j }); continue; } // ex.: resposta do !id\n  const txt = norm(j.texto || '');\n  for (const a of cfg.alertas || []) {\n    if (!a.ativo) continue;\n    if (a.grupos?.length && !a.grupos.includes(j.fonte)) continue;\n    if (!(a.precisaTer || []).every((lista) => lista.some((t) => tem(txt, t)))) continue;\n    if ((a.naoPodeTer || []).some((t) => tem(txt, t))) continue;\n    const chave = a.nome + '|' + txt.replace(/\\s+/g, ' ').trim().slice(0, 300);\n    if (store.vistos[chave]) continue;\n    store.vistos[chave] = agora;\n    out.push({ json: {\n      alerta: a.nome,\n      fonte: j.fonte,\n      texto: j.texto,\n      precoMaximo: a.precoMaximo ?? null,\n      usarIA: !!cfg.usarIA,\n      payload: {\n        model: cfg.modeloIA,\n        response_format: { type: 'json_object' },\n        messages: [\n          { role: 'system', content: PROMPT },\n          { role: 'user', content: `CRITÉRIO: ${a.criterio}\\n\\nMENSAGEM:\\n${j.texto}` },\n        ],\n      },\n    } });\n  }\n}\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1380,
+        140
+      ],
+      "id": "21fc586b-bc63-4683-9b0e-9fad0c076310",
+      "name": "Filtro (alertas)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1c9d86c-41d6-45da-88be-d097a49017c3",
+              "leftValue": "={{ $json.usarIA && !$json.mensagemPronta }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        140
+      ],
+      "id": "3ce49fb3-d46f-4d68-b7c2-fbc0034329b6",
+      "name": "Usar IA?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1820,
+        40
+      ],
+      "id": "305ef97c-e5f6-4e37-b05d-7ae79b2bb46f",
+      "name": "IA confirma oferta",
+      "onError": "continueRegularOutput",
+      "retryOnFail": true,
+      "maxTries": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Junta a resposta da IA com a oferta e descarta o que não bateu (ou passou do preço máximo)\nconst out = [];\n$input.all().forEach((it, i) => {\n  const src = $('Usar IA?').itemMatching(i).json;\n  let r = null;\n  try { r = JSON.parse(it.json.choices[0].message.content); } catch (e) {}\n  if (r && r.match === false) return;\n  if (r && src.precoMaximo && typeof r.preco_numero === 'number' && r.preco_numero > src.precoMaximo) return;\n  // Se a IA falhar (sem crédito, fora do ar...), avisa mesmo assim marcando \"não verificado\"\n  out.push({ json: { ...src, produto: r?.produto || '', preco: r?.preco || '', verificado: !!r } });\n});\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2040,
+        40
+      ],
+      "id": "aa6470ad-7378-4894-a7d4-e866ed6e5d4f",
+      "name": "Resultado da IA"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Monta o texto final do alerta\nconst cfg = $('CONFIG').first().json;\nreturn $input.all().map(({ json: s }) => {\n  if (s.mensagemPronta) return { json: { numero: cfg.meuNumero, texto: s.mensagemPronta } };\n  const cabecalho = [\n    `🔔 *${s.alerta}*${s.usarIA && !s.verificado ? ' _(não verificado pela IA)_' : ''}`,\n    `📍 ${s.fonte}`,\n    s.produto ? `🏷️ ${s.produto}${s.preco ? ' — *' + s.preco + '*' : ''}` : null,\n  ].filter(Boolean).join('\\n');\n  return { json: { numero: cfg.meuNumero, texto: `${cabecalho}\\n\\n${s.texto}` } };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2260,
+        140
+      ],
+      "id": "594236b0-cf33-4be1-a86b-73099bbf7f02",
+      "name": "Monta mensagem"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIG').first().json.evolutionUrl }}/message/sendText/{{ $('CONFIG').first().json.instancia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.numero, text: $json.texto }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2480,
+        140
+      ],
+      "id": "fe16177f-8308-4298-91cb-d9d746a8baae",
+      "name": "Envia no WhatsApp"
+    },
+    {
+      "parameters": {
+        "content": "## 🔔 Alerta de Ofertas (WhatsApp + Telegram)\n\n**1. Credenciais** (crie no n8n, nada vem no arquivo):\n- *Envia no WhatsApp* → **Header Auth**: Name = `apikey`, Value = API key da sua Evolution\n- *IA confirma oferta* → **OpenAI** (opcional; se não for usar, `usarIA: false` no CONFIG)\n\n**2. Edite o nó CONFIG**: URL da Evolution, instância, seu número, grupos, canais e alertas.\n\n**3. Ative o workflow** e cole a *Production URL* do nó **WhatsApp (Evolution)** no webhook da sua instância (evento `MESSAGES_UPSERT`).\n\n**4. Descubra o ID dos grupos**: mande `!id` dentro do grupo, pelo seu número. O workflow te responde no privado.\n\n➡️ Novo tipo de produto = copie um bloco em `alertas` no CONFIG.",
+        "height": 420,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -520
+      ],
+      "id": "43405c86-cf56-4f7a-96d3-81c492e2f3a7",
+      "name": "Leia-me"
+    }
+  ],
+  "connections": {
+    "WhatsApp (Evolution)": {
+      "main": [
+        [
+          {
+            "node": "CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram a cada 5 min": {
+      "main": [
+        [
+          {
+            "node": "CONFIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CONFIG": {
+      "main": [
+        [
+          {
+            "node": "Veio do WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Veio do WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "Mensagem do WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lista canais do Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensagem do WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Filtro (alertas)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lista canais do Telegram": {
+      "main": [
+        [
+          {
+            "node": "Lê canal do Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lê canal do Telegram": {
+      "main": [
+        [
+          {
+            "node": "Posts novos do Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posts novos do Telegram": {
+      "main": [
+        [
+          {
+            "node": "Filtro (alertas)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtro (alertas)": {
+      "main": [
+        [
+          {
+            "node": "Usar IA?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usar IA?": {
+      "main": [
+        [
+          {
+            "node": "IA confirma oferta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Monta mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IA confirma oferta": {
+      "main": [
+        [
+          {
+            "node": "Resultado da IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado da IA": {
+      "main": [
+        [
+          {
+            "node": "Monta mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monta mensagem": {
+      "main": [
+        [
+          {
+            "node": "Envia no WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
